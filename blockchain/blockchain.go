@@ -2,45 +2,44 @@ package blockchain
 
 import (
 	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"time"
 )
+
+type BlockChain struct {
+	DB *sql.DB
+}
 
 func NewChain(filename, receiver string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-
 	err = file.Close()
 	if err != nil {
 		return err
 	}
-
 	db, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		return err
 	}
-
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
 			return
 		}
 	}(db)
-
 	_, err = db.Exec(CreateTable)
 	chain := &BlockChain{
 		DB: db,
 	}
-
 	genesis := &Block{
 		PrevHash:  []byte(GenesisBlock),
 		Mapping:   make(map[string]uint64),
 		Miner:     receiver,
 		TimeStamp: time.Now().Format(time.RFC3339),
 	}
-
 	genesis.Mapping[StorageChain] = StorageValue
 	genesis.Mapping[receiver] = GenesisReward
 	genesis.CurrHash = genesis.hash()
@@ -53,43 +52,77 @@ func LoadChain(filename string) *BlockChain {
 	if err != nil {
 		return nil
 	}
-
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			return
-		}
-	}(db)
-
 	chain := &BlockChain{
 		DB: db,
 	}
-
 	return chain
 }
 
 func NewBlock(miner string, prevHash []byte) *Block {
 	return &Block{
-		Difficulty: Difficulty,
+		Difficulty: DIFFICULTY,
 		PrevHash:   prevHash,
-		Mapping:    make(map[string]uint64),
 		Miner:      miner,
+		Mapping:    make(map[string]uint64),
 	}
 }
 
-func NewTransactions(user *User, lastHash []byte, to string, value uint64) *Transaction {
-	tx := &Transaction{
-		RandBytes: GenerateRandomBytes(RandBytes),
-		PrevBlock: lastHash,
-		Sender:    user.Address(),
-		Receiver:  to,
-		Value:     value,
+func (chain *BlockChain) Size() uint64 {
+	var size uint64
+	row := chain.DB.QueryRow("SELECT Id FROM BlockChain ORDER BY Id DESC")
+	err := row.Scan(&size)
+	if err != nil {
+		return 0
 	}
+	return size
+}
 
-	if value > StartPercent {
-		tx.ToStorage = StorageReward
+func (chain *BlockChain) Balance(address string, size uint64) uint64 {
+	var (
+		sblock  string
+		block   *Block
+		balance uint64
+	)
+	rows, err := chain.DB.Query("SELECT Block FROM BlockChain WHERE Id <= $1 ORDER BY Id DESC", size)
+	if err != nil {
+		return balance
 	}
-	tx.CurrHash = tx.hash()
-	tx.Signature = tx.sign(user.Private())
-	return tx
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			return
+		}
+	}(rows)
+	for rows.Next() {
+		err := rows.Scan(&sblock)
+		if err != nil {
+			return 0
+		}
+		block = DeserializeBlock(sblock)
+		if value, ok := block.Mapping[address]; ok {
+			balance = value
+			break
+		}
+	}
+	return balance
+}
+
+func (chain *BlockChain) LastHash() []byte {
+	var hash string
+	row := chain.DB.QueryRow("SELECT Hash FROM BlockChain ORDER BY Id DESC")
+	err := row.Scan(&hash)
+	if err != nil {
+		return nil
+	}
+	return Base64Decode(hash)
+}
+
+func (chain *BlockChain) AddBlock(block *Block) {
+	_, err := chain.DB.Exec("INSERT INTO BlockChain (Hash, Block) VALUES ($1, $2)",
+		Base64Encode(block.CurrHash),
+		SerializeBlock(block),
+	)
+	if err != nil {
+		return
+	}
 }

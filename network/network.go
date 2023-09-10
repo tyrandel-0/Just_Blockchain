@@ -46,7 +46,7 @@ func Handle(option int, conn Conn, pack *Package, handle func(*Package) string) 
 	_, err := conn.Write([]byte(SerializePackage(&Package{
 		Option: option,
 		Data:   handle(pack),
-	}) + ENDBYTES))
+	}) + EndBytes))
 	if err != nil {
 		return false
 	}
@@ -58,7 +58,7 @@ func Send(address string, pack *Package) *Package {
 	if err != nil {
 		return nil
 	}
-	_, err = connection.Write([]byte(SerializePackage(pack) + ENDBYTES))
+	_, err = connection.Write([]byte(SerializePackage(pack) + EndBytes))
 	if err != nil {
 		return nil
 	}
@@ -75,7 +75,7 @@ func Send(address string, pack *Package) *Package {
 
 	select {
 	case <-ch:
-	case <-time.After(WAITTIME * time.Second):
+	case <-time.After(WaitTime * time.Second):
 	}
 
 	return res
@@ -85,7 +85,7 @@ func readPackage(conn Conn) *Package {
 	var (
 		data   = ""
 		size   = uint(0)
-		buffer = make([]byte, BUFFSIZE)
+		buffer = make([]byte, Buffsize)
 	)
 	for {
 		length, err := conn.Read(buffer)
@@ -94,13 +94,13 @@ func readPackage(conn Conn) *Package {
 		}
 
 		size += uint(length)
-		if size > DMAXSIZE {
+		if size > Dmaxsize {
 			return nil
 		}
 
 		data += string(buffer[:length])
-		if strings.Contains(data, ENDBYTES) {
-			data = strings.Split(data, ENDBYTES)[0]
+		if strings.Contains(data, EndBytes) {
+			data = strings.Split(data, EndBytes)[0]
 			break
 		}
 	}
