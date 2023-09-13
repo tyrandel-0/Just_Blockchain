@@ -16,11 +16,11 @@ import (
 )
 
 func GeneratePrivate(bits uint) *rsa.PrivateKey {
-	priv, err := rsa.GenerateKey(rand.Reader, int(bits))
+	privateKey, err := rsa.GenerateKey(rand.Reader, int(bits))
 	if err != nil {
 		return nil
 	}
-	return priv
+	return privateKey
 }
 
 func GenerateRandomBytes(max uint) []byte {
