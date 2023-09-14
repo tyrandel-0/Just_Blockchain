@@ -7,7 +7,14 @@ import (
 )
 
 const DBNAME = "blockchain.db"
-const TransactionOption = 1
+const (
+	AddBlock = iota + 1
+	AddTx
+	GetBlock
+	GetLastHash
+	GetBalance
+	GetChainSize
+)
 
 func main() {
 	miner := blockchain.NewUser()
@@ -31,13 +38,7 @@ func main() {
 	}
 	chain.AddBlock(block)
 
-	listener := network.Listen("localhost:8080", func(conn network.Conn, pack *network.Package) {
-		if network.Handle(TransactionOption, conn, pack, handleTransaction) {
-			fmt.Println("Transaction handled successfully")
-		} else {
-			fmt.Println("Failed to handle transaction")
-		}
-	})
+	listener := network.Listen("localhost:8080", handleServer)
 
 	if listener == nil {
 		fmt.Println("Failed to start server")
@@ -47,7 +48,37 @@ func main() {
 	select {}
 }
 
-func handleTransaction(pack *network.Package) string {
-	fmt.Printf("Received transaction with option %d and data: %s\n", pack.Option, pack.Data)
-	return "Transaction processed successfully"
+func handleServer(conn network.Conn, pack *network.Package) {
+	network.Handle(AddBlock, conn, pack, addBlock)
+	network.Handle(AddTx, conn, pack, addTransaction)
+	network.Handle(GetBlock, conn, pack, getBlock)
+	network.Handle(GetLastHash, conn, pack, getLastHash)
+	network.Handle(GetBalance, conn, pack, getBalance)
+	network.Handle(GetChainSize, conn, pack, getChainSize)
+}
+
+func addBlock(pack *network.Package) string {
+	return ""
+}
+
+func addTransaction(pack *network.Package) string {
+	tx := pack.Data
+	fmt.Println(tx)
+	return ""
+}
+
+func getBlock(pack *network.Package) string {
+	return ""
+}
+
+func getLastHash(pack *network.Package) string {
+	return ""
+}
+
+func getBalance(pack *network.Package) string {
+	return ""
+}
+
+func getChainSize(pack *network.Package) string {
+	return ""
 }
