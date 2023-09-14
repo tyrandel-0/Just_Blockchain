@@ -22,9 +22,8 @@ func main() {
 		msg, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		splitedMsg := strings.Split(msg, " ")
 		toAddr := splitedMsg[0]
-		amount, _ := strconv.Atoi(splitedMsg[1])
+		amount, _ := strconv.Atoi(strings.ReplaceAll(splitedMsg[1], "\n", ""))
 		chain := blockchain.LoadChain(DBNAME)
-
 		tx := blockchain.NewTransaction(user, chain.LastHash(), toAddr, uint64(amount))
 		packge := network.Package{
 			Option: 1,
