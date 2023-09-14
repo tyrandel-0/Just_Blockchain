@@ -62,8 +62,11 @@ func addBlock(pack *network.Package) string {
 }
 
 func addTransaction(pack *network.Package) string {
-	tx := pack.Data
-	fmt.Println(tx)
+	sTx := pack.Data
+	tx := blockchain.DeserializeTX(sTx)
+	chain := blockchain.LoadChain(DBNAME)
+	blockchain.NewBlock()
+	fmt.Println()
 	return ""
 }
 
